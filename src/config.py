@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
@@ -28,3 +29,18 @@ class TransitionConfig:
     crop_anchor: str = "center"
     transition_audio_volume: float = 1.0
     video_audio_volume: float = 1.0
+
+
+@dataclass
+class TextOverlayConfig:
+    text: str = "TEST TEXT"
+    font_path: Optional[Path] = None
+    font_size: int = 60
+    font_color: str = "white"
+    x_position: str = "(w-text_w)/2"
+    y_position: str = "(h-text_h)/2"
+    box_enabled: bool = False
+    box_color: str = "black@0.5"
+    box_border_width: int = 10
+    text_max_width: Optional[int] = None
+    line_spacing: int = 0

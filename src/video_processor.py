@@ -1,8 +1,9 @@
 import logging
 import subprocess
 from pathlib import Path
+from typing import Optional
 
-from config import ProcessingPaths, TransitionConfig, VideoConfig
+from config import ProcessingPaths, TextOverlayConfig, TransitionConfig, VideoConfig
 from exceptions import FFmpegExecutionError
 from ffmpeg_builder import (
     build_concat_command,
@@ -26,11 +27,13 @@ class VideoProcessor:
         paths: ProcessingPaths,
         transition_config: TransitionConfig,
         sfx_path: Path,
+        text_config: Optional[TextOverlayConfig] = None,
     ):
         self.config = config
         self.paths = paths
         self.transition_config = transition_config
         self.sfx_path = sfx_path
+        self.text_config = text_config
 
     def process(self, output_filename: str) -> Path:
         logger.info("Starting video processing pipeline")
@@ -80,6 +83,7 @@ class VideoProcessor:
                 output_path,
                 self.config,
                 self.transition_config.crop_anchor,
+                self.text_config,
             )
 
             self._execute_ffmpeg(command, f"normalize video {i}")

@@ -8,6 +8,7 @@ from pathlib import Path
 from audio_analyzer import get_audio_duration
 from config import ProcessingPaths, TransitionConfig, VideoConfig
 from exceptions import VideoProcessingError
+from text_styles import TextStyles
 from video_processor import VideoProcessor
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,13 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--title",
+        type=str,
+        default="Top 5",
+        help="Title text to display at the top of videos (default: Top 5)",
+    )
+
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable verbose logging",
@@ -90,6 +98,7 @@ def main() -> None:
     try:
         assets_dir = Path(__file__).parent.parent / "assets"
         sfx_path = assets_dir / "sfx" / "buzz_tiktok_sound.mp3"
+        font_path = assets_dir / "fonts" / "ProximaNova-Bold.ttf"
 
         width, height = map(int, args.resolution.split("x"))
 
@@ -113,7 +122,11 @@ def main() -> None:
             crop_anchor=args.crop_anchor,
         )
 
-        processor = VideoProcessor(video_config, paths, transition_config, sfx_path)
+        title_config = TextStyles.get_top5_title(font_path, args.title)
+
+        processor = VideoProcessor(
+            video_config, paths, transition_config, sfx_path, title_config
+        )
         output_path = processor.process(args.output_name)
 
         logger.info(f"SUCCESS! Output saved to: {output_path}")
