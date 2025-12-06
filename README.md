@@ -20,12 +20,12 @@ Automate the creation of TikTok "Top 5" compilation videos.
 tiktok-top-5-maker/
 ├── assets/
 │   ├── fonts/          # Custom fonts for text overlays
-│   ├── transitions/    # Transition templates/configs
+│   ├── sfx/            # Sound effects for transitions
 │   └── effects/        # Effect presets
-├── input/              # Drop your 5 videos here
+├── input/              # Drop your MP4 videos here
 ├── output/             # Final compiled video
 ├── src/                # Processing scripts
-└── ffmpeg/             # FFmpeg binaries (bundled)
+└── temp/               # Temporary processing files (auto-created)
 ```
 
 ## Development Phases
@@ -46,4 +46,56 @@ tiktok-top-5-maker/
 ## Requirements
 
 - Python 3.8+
-- FFmpeg (will be bundled in final executable)
+- FFmpeg (must be installed and in PATH)
+
+## Installation
+
+1. **Install FFmpeg**
+   - macOS: `brew install ffmpeg`
+   - Windows: Download from [ffmpeg.org](https://ffmpeg.org/download.html)
+   - Linux: `sudo apt install ffmpeg`
+
+2. **Verify installation**
+   ```bash
+   ffmpeg -version
+   ```
+
+## Usage
+
+### Basic Usage
+
+1. Place your MP4 videos in the `input/` directory
+2. Run the processor:
+   ```bash
+   python3 src/main.py
+   ```
+3. Find your compiled video in `output/top5_compilation.mp4`
+
+### Advanced Options
+
+```bash
+python3 src/main.py --help
+```
+
+**Available options:**
+- `--input-dir PATH` - Custom input directory (default: ./input)
+- `--output-dir PATH` - Custom output directory (default: ./output)
+- `--output-name NAME` - Output filename (default: top5_compilation.mp4)
+- `--resolution WxH` - Target resolution (default: 1080x1920)
+- `--fps N` - Target framerate (default: 60)
+- `--crop-anchor POSITION` - Crop position: center, top, bottom, left, right (default: center)
+- `--verbose` - Enable detailed logging
+
+**Example:**
+```bash
+python3 src/main.py --resolution 720x1280 --fps 30 --crop-anchor top --verbose
+```
+
+## How It Works
+
+1. **Discovery** - Finds all .mp4 files in input/ (sorted alphabetically)
+2. **Normalization** - Converts videos to 1080x1920 @ 60fps, center-crops non-matching videos
+3. **Transitions** - Generates black screens with SFX (duration auto-detected from buzz_tiktok_sound.mp3)
+4. **Concatenation** - Merges videos with transitions between each
+5. **Audio Mixing** - Overlays SFX on transitions while keeping original video audio
+6. **Output** - Saves final compilation to output/
