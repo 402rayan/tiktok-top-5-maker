@@ -28,12 +28,14 @@ class VideoProcessor:
         transition_config: TransitionConfig,
         sfx_path: Path,
         text_config: Optional[TextOverlayConfig] = None,
+        per_video_text_configs: Optional[list[list[TextOverlayConfig]]] = None,
     ):
         self.config = config
         self.paths = paths
         self.transition_config = transition_config
         self.sfx_path = sfx_path
         self.text_config = text_config
+        self.per_video_text_configs = per_video_text_configs
 
     def process(self, output_filename: str) -> Path:
         logger.info("Starting video processing pipeline")
@@ -78,12 +80,19 @@ class VideoProcessor:
             output_path = temp_dir / f"normalized_{i}.mp4"
             logger.info(f"Normalizing video {i + 1}/{len(input_videos)}: {video_path.name}")
 
+            # Get text configs for this specific video
+            text_configs = None
+            if self.per_video_text_configs and i < len(self.per_video_text_configs):
+                text_configs = self.per_video_text_configs[i]
+            elif self.text_config:
+                text_configs = [self.text_config]
+
             command = build_normalize_command(
                 video_path,
                 output_path,
                 self.config,
                 self.transition_config.crop_anchor,
-                self.text_config,
+                text_configs=text_configs,
             )
 
             self._execute_ffmpeg(command, f"normalize video {i}")

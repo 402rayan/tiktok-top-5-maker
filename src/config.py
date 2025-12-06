@@ -44,3 +44,5 @@ class TextOverlayConfig:
     box_border_width: int = 10
     text_max_width: Optional[int] = None
     line_spacing: int = 0
+    text_border_width: int = 0
+    text_border_color: str = "black"

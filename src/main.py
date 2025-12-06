@@ -6,9 +6,13 @@ import sys
 from pathlib import Path
 
 from audio_analyzer import get_audio_duration
-from config import ProcessingPaths, TransitionConfig, VideoConfig
+from config import ProcessingPaths, TextOverlayConfig, TransitionConfig, VideoConfig
+from counter_generator import calculate_adaptive_font_size, generate_counter_data
 from exceptions import VideoProcessingError
+from ffmpeg_builder import wrap_text_to_lines
+from file_handler import discover_input_videos
 from text_styles import TextStyles
+from video_metadata import load_video_metadata, match_videos_to_metadata
 from video_processor import VideoProcessor
 
 logger = logging.getLogger(__name__)
@@ -70,6 +74,13 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--metadata",
+        type=Path,
+        default=None,
+        help="Path to videos.json metadata file (default: <input-dir>/videos.json)",
+    )
+
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable verbose logging",
@@ -122,10 +133,104 @@ def main() -> None:
             crop_anchor=args.crop_anchor,
         )
 
+        # Load metadata
+        metadata_path = args.metadata or (args.input_dir / "videos.json")
+        metadata = load_video_metadata(metadata_path)
+        logger.info(f"Metadata loaded: {metadata is not None}")
+
+        # Discover videos
+        input_videos = discover_input_videos(args.input_dir)
+        logger.info(f"Found {len(input_videos)} video(s)")
+
+        # Match videos to titles
+        video_titles = match_videos_to_metadata(input_videos, metadata)
+
+        # Generate per-video text configs
         title_config = TextStyles.get_top5_title(font_path, args.title)
 
+        # Calculate title height to position counter below it
+        title_font_size = 70
+        title_y_start = 140
+        title_line_spacing = 10
+        title_max_width = 1000
+
+        # Calculate how many lines the title will have
+        chars_per_line = int(title_max_width / (title_font_size * 0.6))
+        title_lines = wrap_text_to_lines(args.title.upper(), chars_per_line)
+        num_title_lines = len(title_lines)
+
+        # Calculate title end position
+        title_height = num_title_lines * title_font_size + (num_title_lines - 1) * title_line_spacing
+        title_end = title_y_start + title_height
+
+        # Counter starts 100px below title
+        counter_y_position = title_end + 100
+
+        logger.debug(f"Title has {num_title_lines} line(s), counter starts at y={counter_y_position}")
+
+        per_video_text_configs = []
+
+        for i in range(len(input_videos)):
+            # Generate numbers and titles separately
+            numbers, titles = generate_counter_data(i, len(input_videos), video_titles)
+
+            # Create configs for this video
+            video_configs = [title_config]
+
+            # Numbers config: all numbers with fixed size 80
+            numbers_text = "\n".join(numbers)
+            numbers_config = TextOverlayConfig(
+                text=numbers_text,
+                font_path=font_path,
+                font_size=80,
+                font_color="white",
+                x_position="100",
+                y_position=str(counter_y_position),
+                box_enabled=False,
+                line_spacing=10,
+                text_border_width=4,
+                text_border_color="black",
+            )
+            video_configs.append(numbers_config)
+
+            # Titles configs: individual titles with adaptive size and baseline alignment
+            number_font_size = 80
+            counter_line_height = number_font_size + 7  # font_size + line_spacing
+
+            for idx, title in enumerate(titles):
+                if title:
+                    adaptive_size = calculate_adaptive_font_size(title)
+
+                    # Calculate baseline alignment offset
+                    # Smaller font needs to be shifted down to align baseline with larger number
+                    baseline_offset = number_font_size - adaptive_size
+
+                    y_pos = counter_y_position + (idx * counter_line_height) + baseline_offset
+
+                    title_config_item = TextOverlayConfig(
+                        text=title,
+                        font_path=font_path,
+                        font_size=adaptive_size,
+                        font_color="white",
+                        x_position="200",  # Offset to the right of numbers
+                        y_position=str(y_pos),
+                        box_enabled=False,
+                        text_border_width=3,
+                        text_border_color="black",
+                    )
+                    video_configs.append(title_config_item)
+
+            per_video_text_configs.append(video_configs)
+            logger.debug(f"Video {i}: {len(titles) - titles.count(None)} title(s) revealed")
+
+        # Create processor with per-video configs
         processor = VideoProcessor(
-            video_config, paths, transition_config, sfx_path, title_config
+            video_config,
+            paths,
+            transition_config,
+            sfx_path,
+            text_config=None,
+            per_video_text_configs=per_video_text_configs,
         )
         output_path = processor.process(args.output_name)
 

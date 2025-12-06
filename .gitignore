@@ -25,5 +25,6 @@ video_processing.log
 *.swo
 .DS_Store
 
-# Input videos
+# Input videos and metadata
 input/*.mp4
+input/videos.json

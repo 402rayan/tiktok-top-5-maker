@@ -49,10 +49,17 @@ def get_text_overlay_filter(text_config: TextOverlayConfig) -> str:
 
     font_path_escaped = str(text_config.font_path).replace("\\", "/").replace(":", "\\:")
 
-    lines = [text_config.text]
+    # First split by explicit newlines, then wrap each segment if needed
+    segments = text_config.text.split('\n')
+    lines = []
+
     if text_config.text_max_width:
         chars_per_line = int(text_config.text_max_width / (text_config.font_size * 0.6))
-        lines = wrap_text_to_lines(text_config.text, chars_per_line)
+        for segment in segments:
+            wrapped = wrap_text_to_lines(segment, chars_per_line)
+            lines.extend(wrapped)
+    else:
+        lines = segments
 
     filters = []
     line_height = text_config.font_size + text_config.line_spacing
@@ -82,6 +89,12 @@ def get_text_overlay_filter(text_config: TextOverlayConfig) -> str:
                 f"boxborderw={text_config.box_border_width}",
             ])
 
+        if text_config.text_border_width > 0:
+            drawtext_params.extend([
+                f"borderw={text_config.text_border_width}",
+                f"bordercolor={text_config.text_border_color}",
+            ])
+
         filters.append("drawtext=" + ":".join(drawtext_params))
 
     return ",".join(filters)
@@ -93,15 +106,21 @@ def build_normalize_command(
     config: VideoConfig,
     crop_anchor: str,
     text_config: Optional[TextOverlayConfig] = None,
+    text_configs: Optional[list[TextOverlayConfig]] = None,
 ) -> list[str]:
     scale_filter = f"scale={config.target_width}:{config.target_height}:force_original_aspect_ratio=increase"
     crop_filter = get_crop_filter(crop_anchor, config.target_width, config.target_height)
 
     filters = [scale_filter, crop_filter]
 
-    if text_config:
-        text_filter = get_text_overlay_filter(text_config)
-        filters.append(text_filter)
+    # Support both single and multiple text configs
+    if text_config and not text_configs:
+        text_configs = [text_config]
+
+    if text_configs:
+        for tc in text_configs:
+            text_filter = get_text_overlay_filter(tc)
+            filters.append(text_filter)
 
     video_filter = ",".join(filters)
 

@@ -47,3 +47,19 @@ class TextStyles:
             box_color="black@0.8",
             box_border_width=25,
         )
+
+    @staticmethod
+    def get_counter_style(font_path: Path, counter_text: str, y_position: int = 240) -> TextOverlayConfig:
+        return TextOverlayConfig(
+            text=counter_text,
+            font_path=font_path,
+            font_size=80,
+            font_color="white",
+            x_position="100",
+            y_position=str(y_position),
+            box_enabled=False,
+            text_max_width=1000,
+            line_spacing=10,
+            text_border_width=4,
+            text_border_color="black",
+        )
