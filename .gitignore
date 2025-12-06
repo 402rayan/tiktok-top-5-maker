@@ -25,5 +25,5 @@ video_processing.log
 *.swo
 .DS_Store
 
-# Input videos (optional - uncomment if you don't want to commit test videos)
-# input/*.mp4
+# Input videos
+input/*.mp4

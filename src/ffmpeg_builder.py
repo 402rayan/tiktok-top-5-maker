@@ -51,18 +51,19 @@ def build_transition_command(
     duration: float,
     output_path: Path,
     config: VideoConfig,
+    sfx_path: Path,
 ) -> list[str]:
     command = [
         "ffmpeg",
         "-f", "lavfi",
         "-i", f"color=black:s={config.target_width}x{config.target_height}:d={duration}",
-        "-f", "lavfi",
-        "-i", f"anullsrc=channel_layout=stereo:sample_rate=44100:duration={duration}",
+        "-i", str(sfx_path),
         "-r", str(config.target_fps),
         "-c:v", config.video_codec,
         "-preset", "ultrafast",
         "-crf", "0",
         "-c:a", config.audio_codec,
+        "-shortest",
         "-y",
         str(output_path),
     ]
@@ -80,45 +81,5 @@ def build_concat_command(file_list_path: Path, output_path: Path) -> list[str]:
         "-y",
         str(output_path),
     ]
-
-    return command
-
-
-def build_audio_mix_command(
-    base_video_path: Path,
-    sfx_audio_path: Path,
-    transition_timestamps: list[float],
-    output_path: Path,
-    config: VideoConfig,
-) -> list[str]:
-    command = ["ffmpeg", "-i", str(base_video_path)]
-
-    for _ in transition_timestamps:
-        command.extend(["-i", str(sfx_audio_path)])
-
-    filters = []
-    audio_inputs = ["0:a"]
-
-    for i, timestamp in enumerate(transition_timestamps):
-        delay_ms = int(timestamp * 1000)
-        filters.append(f"[{i + 1}:a]adelay=delays={delay_ms}:all=1[sfx{i}]")
-        audio_inputs.append(f"[sfx{i}]")
-
-    num_inputs = len(audio_inputs)
-    amix_filter = f"{''.join(audio_inputs)}amix=inputs={num_inputs}:duration=first[aout]"
-    filters.append(amix_filter)
-
-    filter_complex = ";".join(filters)
-
-    command.extend([
-        "-filter_complex", filter_complex,
-        "-map", "0:v",
-        "-map", "[aout]",
-        "-c:v", "copy",
-        "-c:a", config.audio_codec,
-        "-b:a", config.audio_bitrate,
-        "-y",
-        str(output_path),
-    ])
 
     return command

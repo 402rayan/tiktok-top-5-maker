@@ -5,7 +5,6 @@ from pathlib import Path
 from config import ProcessingPaths, TransitionConfig, VideoConfig
 from exceptions import FFmpegExecutionError
 from ffmpeg_builder import (
-    build_audio_mix_command,
     build_concat_command,
     build_normalize_command,
     build_transition_command,
@@ -60,21 +59,9 @@ class VideoProcessor:
             )
             logger.info("Concat file list created")
 
-            concatenated_path = temp_dir / "concatenated.mp4"
-            self._concatenate_videos(concat_list_path, concatenated_path)
-            logger.info("Videos concatenated")
-
-            video_durations = self._get_video_durations(normalized_videos)
-            transition_timestamps = self._calculate_transition_timestamps(
-                video_durations
-            )
-            logger.info(f"Calculated {len(transition_timestamps)} transition timestamp(s)")
-
             output_path = self.paths.output_dir / output_filename
-            self._mix_audio_with_sfx(
-                concatenated_path, transition_timestamps, output_path
-            )
-            logger.info("Audio mixing completed")
+            self._concatenate_videos(concat_list_path, output_path)
+            logger.info("Videos concatenated")
 
         logger.info(f"Processing complete: {output_path}")
         return output_path
@@ -114,6 +101,7 @@ class VideoProcessor:
                 self.transition_config.duration,
                 output_path,
                 self.config,
+                self.sfx_path,
             )
 
             self._execute_ffmpeg(command, f"generate transition {i}")
@@ -145,65 +133,6 @@ class VideoProcessor:
 
         command = build_concat_command(concat_list_path, output_path)
         self._execute_ffmpeg(command, "concatenate videos")
-
-    def _get_video_durations(self, video_paths: list[Path]) -> list[float]:
-        durations = []
-
-        for video_path in video_paths:
-            command = [
-                "ffprobe",
-                "-v", "error",
-                "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                str(video_path),
-            ]
-
-            result = subprocess.run(command, capture_output=True, text=True, check=False)
-
-            if result.returncode != 0:
-                raise FFmpegExecutionError(f"Failed to get duration for {video_path}")
-
-            duration = float(result.stdout.strip())
-            durations.append(duration)
-
-        return durations
-
-    def _calculate_transition_timestamps(
-        self, video_durations: list[float]
-    ) -> list[float]:
-        timestamps = []
-        current_time = 0.0
-
-        for i, duration in enumerate(video_durations[:-1]):
-            current_time += duration
-            timestamps.append(current_time)
-            current_time += self.transition_config.duration
-
-        return timestamps
-
-    def _mix_audio_with_sfx(
-        self,
-        base_video_path: Path,
-        transition_timestamps: list[float],
-        output_path: Path,
-    ) -> None:
-        if not transition_timestamps:
-            logger.info("No transitions to mix, copying video as-is")
-            import shutil
-            shutil.copy(base_video_path, output_path)
-            return
-
-        logger.info("Mixing audio with SFX overlays")
-
-        command = build_audio_mix_command(
-            base_video_path,
-            self.sfx_path,
-            transition_timestamps,
-            output_path,
-            self.config,
-        )
-
-        self._execute_ffmpeg(command, "mix audio with SFX")
 
     def _execute_ffmpeg(self, command: list[str], description: str) -> None:
         logger.info(f"Executing: {description}")
