@@ -177,25 +177,25 @@ def main() -> None:
             # Create configs for this video
             video_configs = [title_config]
 
-            # Numbers config: all numbers with fixed size 80
+            # Numbers config: all numbers with fixed size from config
             numbers_text = "\n".join(numbers)
             numbers_config = TextOverlayConfig(
                 text=numbers_text,
                 font_path=font_path,
-                font_size=80,
+                font_size=video_config.dual_video.counter_font_size,
                 font_color="white",
                 x_position="100",
                 y_position=str(counter_y_position),
                 box_enabled=False,
-                line_spacing=10,
+                line_spacing=video_config.dual_video.counter_line_spacing,
                 text_border_width=4,
                 text_border_color="black",
             )
             video_configs.append(numbers_config)
 
             # Titles configs: individual titles with adaptive size and baseline alignment
-            number_font_size = 80
-            counter_line_height = number_font_size + 7  # font_size + line_spacing
+            number_font_size = video_config.dual_video.counter_font_size
+            counter_line_height = number_font_size + video_config.dual_video.counter_line_spacing
 
             for idx, title in enumerate(titles):
                 if title:
@@ -231,6 +231,7 @@ def main() -> None:
             sfx_path,
             text_config=None,
             per_video_text_configs=per_video_text_configs,
+            counter_y_position=counter_y_position,
         )
         output_path = processor.process(args.output_name)
 

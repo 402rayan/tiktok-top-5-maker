@@ -7,6 +7,7 @@ from config import ProcessingPaths, TextOverlayConfig, TransitionConfig, VideoCo
 from exceptions import FFmpegExecutionError
 from ffmpeg_builder import (
     build_concat_command,
+    build_dual_video_normalize_command,
     build_normalize_command,
     build_transition_command,
 )
@@ -20,6 +21,59 @@ from file_handler import (
 logger = logging.getLogger(__name__)
 
 
+def calculate_foreground_dimensions(
+    counter_y_position: int,
+    counter_height: int,
+    video_config: VideoConfig,
+    target_width: int = 1080,
+    target_height: int = 1920,
+) -> dict:
+    """Calculate dimensions and position for foreground video.
+
+    Args:
+        counter_y_position: Y position where counter starts
+        counter_height: Total height of the counter
+        video_config: Video configuration including dual video settings
+        target_width: Target canvas width (default: 1080)
+        target_height: Target canvas height (default: 1920)
+
+    Returns:
+        dict with keys: 'max_width', 'max_height', 'y_pos', 'x_pos'
+    """
+    dual_config = video_config.dual_video
+
+    counter_end_y = counter_y_position + counter_height
+
+    # Calculate available space
+    available_height = (
+        target_height
+        - counter_end_y
+        - dual_config.foreground_top_margin
+        - dual_config.foreground_bottom_margin
+    )
+
+    available_width = (
+        target_width
+        - dual_config.foreground_left_margin
+        - dual_config.foreground_right_margin
+    )
+
+    # Edge case: ensure minimum height
+    if available_height < dual_config.min_foreground_height:
+        logger.warning(
+            f"Counter takes too much space! Available height: {available_height}px, "
+            f"minimum required: {dual_config.min_foreground_height}px"
+        )
+        available_height = dual_config.min_foreground_height
+
+    return {
+        'max_width': available_width,
+        'max_height': available_height,
+        'y_pos': counter_end_y + dual_config.foreground_top_margin,
+        'x_pos': dual_config.foreground_left_margin,
+    }
+
+
 class VideoProcessor:
     def __init__(
         self,
@@ -29,6 +83,7 @@ class VideoProcessor:
         sfx_path: Path,
         text_config: Optional[TextOverlayConfig] = None,
         per_video_text_configs: Optional[list[list[TextOverlayConfig]]] = None,
+        counter_y_position: int = 310,
     ):
         self.config = config
         self.paths = paths
@@ -36,6 +91,7 @@ class VideoProcessor:
         self.sfx_path = sfx_path
         self.text_config = text_config
         self.per_video_text_configs = per_video_text_configs
+        self.counter_y_position = counter_y_position
 
     def process(self, output_filename: str) -> Path:
         logger.info("Starting video processing pipeline")
@@ -76,6 +132,11 @@ class VideoProcessor:
     ) -> list[Path]:
         normalized_videos = []
 
+        # Calculate counter height (same for all videos)
+        dual_config = self.config.dual_video
+        counter_line_height = dual_config.counter_font_size + dual_config.counter_line_spacing
+        counter_height = len(input_videos) * counter_line_height
+
         for i, video_path in enumerate(input_videos):
             output_path = temp_dir / f"normalized_{i}.mp4"
             logger.info(f"Normalizing video {i + 1}/{len(input_videos)}: {video_path.name}")
@@ -87,12 +148,20 @@ class VideoProcessor:
             elif self.text_config:
                 text_configs = [self.text_config]
 
-            command = build_normalize_command(
+            # Calculate foreground dimensions
+            fg_dims = calculate_foreground_dimensions(
+                self.counter_y_position,
+                counter_height,
+                self.config,
+            )
+
+            # Use dual video builder
+            command = build_dual_video_normalize_command(
                 video_path,
                 output_path,
                 self.config,
-                self.transition_config.crop_anchor,
-                text_configs=text_configs,
+                fg_dims,
+                text_configs,
             )
 
             self._execute_ffmpeg(command, f"normalize video {i}")

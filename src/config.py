@@ -1,6 +1,19 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+
+@dataclass
+class DualVideoConfig:
+    enabled: bool = True
+    blur_sigma: int = 30
+    foreground_top_margin: int = 50
+    foreground_bottom_margin: int = 100
+    foreground_left_margin: int = 50
+    foreground_right_margin: int = 50
+    min_foreground_height: int = 400
+    counter_font_size: int = 80
+    counter_line_spacing: int = 7
 
 
 @dataclass
@@ -14,6 +27,7 @@ class VideoConfig:
     audio_bitrate: str = "192k"
     preset: str = "medium"
     crf: int = 23
+    dual_video: DualVideoConfig = field(default_factory=DualVideoConfig)
 
 
 @dataclass

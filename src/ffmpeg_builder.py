@@ -142,6 +142,87 @@ def build_normalize_command(
     return command
 
 
+def build_dual_video_normalize_command(
+    input_path: Path,
+    output_path: Path,
+    config: VideoConfig,
+    foreground_dimensions: dict,
+    text_configs: Optional[list[TextOverlayConfig]] = None,
+) -> list[str]:
+    """Build FFmpeg command for dual video display with blurred background.
+
+    Creates two synchronized video streams from the same input:
+    - Background: Blurred video scaled to fill entire frame
+    - Foreground: Original video scaled to fit available space
+
+    Args:
+        input_path: Path to input video file
+        output_path: Path where output will be saved
+        config: Video configuration including dual video settings
+        foreground_dimensions: Dict with 'max_width', 'max_height', 'y_pos'
+        text_configs: Optional list of text overlay configurations
+
+    Returns:
+        List of FFmpeg command arguments
+    """
+    blur_sigma = config.dual_video.blur_sigma
+    fg_width = foreground_dimensions['max_width']
+    fg_height = foreground_dimensions['max_height']
+    fg_x_pos = foreground_dimensions['x_pos']
+    fg_y_pos = foreground_dimensions['y_pos']
+
+    # Build filter_complex
+    filter_parts = [
+        # Split into two streams
+        "[0:v]split=2[original][blur_source]",
+
+        # Background: scale to cover, crop, blur
+        f"[blur_source]scale=1080:1920:force_original_aspect_ratio=increase,"
+        f"crop=1080:1920:(iw-1080)/2:(ih-1920)/2,"
+        f"gblur=sigma={blur_sigma}[blurred_bg]",
+
+        # Foreground: scale to fit available space with margins
+        f"[original]scale=w='min({fg_width},iw)':h='min({fg_height},ih)':force_original_aspect_ratio=decrease[scaled_fg]",
+
+        # Overlay foreground on background, centered within available space
+        f"[blurred_bg][scaled_fg]overlay=x={fg_x_pos}+(({fg_width}-w)/2):y={fg_y_pos}+(({fg_height}-h)/2)[composed]",
+    ]
+
+    # Add text overlays
+    if text_configs:
+        text_filters = []
+        for tc in text_configs:
+            text_filter = get_text_overlay_filter(tc)
+            text_filters.append(text_filter)
+
+        # Apply text overlays to composed video
+        text_chain = ",".join(text_filters)
+        filter_parts.append(f"[composed]{text_chain}[final]")
+    else:
+        filter_parts.append("[composed]null[final]")
+
+    filter_complex = ";".join(filter_parts)
+
+    command = [
+        "ffmpeg",
+        "-i", str(input_path),
+        "-filter_complex", filter_complex,
+        "-map", "[final]",
+        "-map", "0:a?",  # Include audio if present
+        "-r", str(config.target_fps),
+        "-c:v", config.video_codec,
+        "-preset", config.preset,
+        "-crf", str(config.crf),
+        "-b:v", config.video_bitrate,
+        "-c:a", config.audio_codec,
+        "-b:a", config.audio_bitrate,
+        "-y",
+        str(output_path),
+    ]
+
+    return command
+
+
 def build_transition_command(
     duration: float,
     output_path: Path,
