@@ -259,3 +259,31 @@ def build_concat_command(file_list_path: Path, output_path: Path) -> list[str]:
     ]
 
     return command
+
+
+def build_trim_command(input_path: Path, output_path: Path, frames_to_skip: int = 2, fps: int = 60) -> list[str]:
+    """Build FFmpeg command to trim first N frames from video.
+
+    Args:
+        input_path: Input video file
+        output_path: Output video file
+        frames_to_skip: Number of frames to skip at the beginning
+        fps: Video framerate
+
+    Returns:
+        FFmpeg command list
+    """
+    command = [
+        "ffmpeg",
+        "-i", str(input_path),
+        "-vf", f"select='gte(n,{frames_to_skip})',setpts=PTS-STARTPTS",
+        "-af", "asetpts=PTS-STARTPTS",
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "23",
+        "-c:a", "aac",
+        "-y",
+        str(output_path),
+    ]
+
+    return command

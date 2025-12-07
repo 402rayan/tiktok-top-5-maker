@@ -126,9 +126,15 @@ class VideoProcessor:
             )
             logger.info("Concat file list created")
 
-            output_path = self.paths.output_dir / output_filename
-            self._concatenate_videos(concat_list_path, output_path)
+            # Concatenate to temporary file first
+            temp_output = temp_dir / "concat_output.mp4"
+            self._concatenate_videos(concat_list_path, temp_output)
             logger.info("Videos concatenated")
+
+            # Trim first 2 frames and save to final output
+            output_path = self.paths.output_dir / output_filename
+            self._trim_beginning(temp_output, output_path)
+            logger.info("Trimmed first frames")
 
         logger.info(f"Processing complete: {output_path}")
         return output_path
@@ -223,6 +229,15 @@ class VideoProcessor:
 
         command = build_concat_command(concat_list_path, output_path)
         self._execute_ffmpeg(command, "concatenate videos")
+
+    def _trim_beginning(self, input_path: Path, output_path: Path) -> None:
+        """Trim first 2 frames from video to remove black frames."""
+        from ffmpeg_builder import build_trim_command
+
+        logger.info("Trimming first 2 frames from video")
+
+        command = build_trim_command(input_path, output_path, frames_to_skip=2, fps=self.config.target_fps)
+        self._execute_ffmpeg(command, "trim beginning frames")
 
     def _execute_ffmpeg(self, command: list[str], description: str) -> None:
         logger.info(f"Executing: {description}")
