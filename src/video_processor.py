@@ -84,6 +84,7 @@ class VideoProcessor:
         text_config: Optional[TextOverlayConfig] = None,
         per_video_text_configs: Optional[list[list[TextOverlayConfig]]] = None,
         counter_y_position: int = 310,
+        input_videos: Optional[list[Path]] = None,
     ):
         self.config = config
         self.paths = paths
@@ -92,11 +93,16 @@ class VideoProcessor:
         self.text_config = text_config
         self.per_video_text_configs = per_video_text_configs
         self.counter_y_position = counter_y_position
+        self.input_videos = input_videos
 
     def process(self, output_filename: str) -> Path:
         logger.info("Starting video processing pipeline")
 
-        input_videos = discover_input_videos(self.paths.input_dir)
+        # Use provided sorted videos or discover them
+        if self.input_videos is not None:
+            input_videos = self.input_videos
+        else:
+            input_videos = discover_input_videos(self.paths.input_dir)
         logger.info(f"Found {len(input_videos)} video(s) to process")
 
         validate_video_files(input_videos)
@@ -172,7 +178,8 @@ class VideoProcessor:
     def _generate_transition_videos(
         self, num_videos: int, temp_dir: Path
     ) -> list[Path]:
-        num_transitions = num_videos - 1
+        # Generate transitions between videos + final transition
+        num_transitions = num_videos
         transition_videos = []
 
         for i in range(num_transitions):
@@ -203,6 +210,7 @@ class VideoProcessor:
             for i, video_path in enumerate(normalized_videos):
                 f.write(f"file '{video_path}'\n")
 
+                # Add transition after each video (including after the last one)
                 if i < len(transition_videos):
                     f.write(f"file '{transition_videos[i]}'\n")
 

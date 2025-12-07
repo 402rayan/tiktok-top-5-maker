@@ -1,22 +1,27 @@
 [
   {
     "file": "1.mp4",
-    "title": "First video title"
+    "title": "First video title",
+    "order": 5
   },
   {
     "file": "2.mp4",
-    "title": "Second video title"
+    "title": "Second video title",
+    "order": 4
   },
   {
     "file": "3.mp4",
-    "title": "Third video title"
+    "title": "Third video title",
+    "order": 3
   },
   {
     "file": "4.mp4",
-    "title": "Fourth video title"
+    "title": "Fourth video title",
+    "order": 2
   },
   {
     "file": "5.mp4",
-    "title": "Fifth video title"
+    "title": "Fifth video title",
+    "order": 1
   }
 ]

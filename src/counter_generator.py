@@ -8,22 +8,23 @@ def generate_counter_data(
 ) -> tuple[list[str], list[Optional[str]]]:
     """Generate counter numbers and titles separately for video overlay.
 
-    Displays numbers 1 to N from top to bottom, reveals titles from bottom to top.
-    Returns numbers and titles as separate lists for independent styling.
+    Displays numbers 1 to N from top to bottom.
+    Videos are sorted by order DESCENDING (5, 4, 3, 2, 1).
+    Reveals titles from bottom to top as videos play.
 
     Examples:
-        current_index=0, total=3, titles=["December", "November", "October"]
-        → numbers: ["1.", "2.", "3."]
-        → titles: [None, None, "December"]
+        current_index=0, total=5, titles=["Top 5", "Top 4", "Top 3", "Top 2", "Top 1"]
+        → numbers: ["1.", "2.", "3.", "4.", "5."]
+        → titles: [None, None, None, None, "Top 5"]
 
-        current_index=1, total=3, titles=["December", "November", "October"]
-        → numbers: ["1.", "2.", "3."]
-        → titles: [None, "November", "December"]
+        current_index=1, total=5, titles=["Top 5", "Top 4", "Top 3", "Top 2", "Top 1"]
+        → numbers: ["1.", "2.", "3.", "4.", "5."]
+        → titles: [None, None, None, "Top 4", "Top 5"]
 
     Args:
-        current_index: Index of the current video (0-based)
+        current_index: Index of the current video being played (0=Top 5, 1=Top 4, etc.)
         total_videos: Total number of videos in the compilation
-        video_titles: List of titles (or None) for each video, in order
+        video_titles: List of titles sorted by order DESCENDING (Top 5 first)
 
     Returns:
         Tuple of (numbers list, titles list)
@@ -32,12 +33,16 @@ def generate_counter_data(
     titles = []
 
     for display_position in range(total_videos):
-        number = display_position + 1  # 1, 2, 3, ..., N
-        video_index = total_videos - 1 - display_position  # N-1, N-2, ..., 0
+        number = display_position + 1  # 1, 2, 3, 4, 5 (top to bottom)
+
+        # Map display position to video index
+        # Position 1 (top) = video index (total-1) = Top 1 (last video)
+        # Position 5 (bottom) = video index 0 = Top 5 (first video)
+        video_index = total_videos - 1 - display_position
 
         numbers.append(f"{number}.")
 
-        # Show title if we've reached this video
+        # Show title if we've reached or passed this video
         if video_index <= current_index and video_titles[video_index]:
             titles.append(video_titles[video_index])
         else:

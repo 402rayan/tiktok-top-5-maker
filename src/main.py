@@ -142,8 +142,8 @@ def main() -> None:
         input_videos = discover_input_videos(args.input_dir)
         logger.info(f"Found {len(input_videos)} video(s)")
 
-        # Match videos to titles
-        video_titles = match_videos_to_metadata(input_videos, metadata)
+        # Match videos to titles and sort by order
+        input_videos, video_titles = match_videos_to_metadata(input_videos, metadata)
 
         # Generate per-video text configs
         title_config = TextStyles.get_top5_title(font_path, args.title)
@@ -232,6 +232,7 @@ def main() -> None:
             text_config=None,
             per_video_text_configs=per_video_text_configs,
             counter_y_position=counter_y_position,
+            input_videos=input_videos,
         )
         output_path = processor.process(args.output_name)
 

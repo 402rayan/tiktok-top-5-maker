@@ -1,5 +1,6 @@
 import json
 import logging
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 class VideoMetadata:
     file: str
     title: str
+    order: int
 
 
 @dataclass
@@ -57,8 +59,17 @@ class VideoMetadataCollection:
                     f"Invalid item at index {i}: missing 'file' or 'title' field"
                 )
 
+            if "order" not in item:
+                raise InvalidInputError(
+                    f"Invalid item at index {i}: missing 'order' field"
+                )
+
             metadata_list.append(
-                VideoMetadata(file=str(item["file"]), title=str(item["title"]))
+                VideoMetadata(
+                    file=str(item["file"]),
+                    title=str(item["title"]),
+                    order=int(item["order"])
+                )
             )
 
         return cls(metadata=metadata_list)
@@ -104,27 +115,51 @@ def load_video_metadata(path: Path) -> Optional[VideoMetadataCollection]:
 
 def match_videos_to_metadata(
     videos: list[Path], metadata: Optional[VideoMetadataCollection]
-) -> list[Optional[str]]:
-    """Match video files to their titles from metadata.
+) -> tuple[list[Path], list[Optional[str]]]:
+    """Match video files to their titles from metadata and sort by order.
 
     Args:
         videos: List of video file paths
         metadata: VideoMetadataCollection or None
 
     Returns:
-        List of titles (or None) in the same order as videos
+        Tuple of (sorted videos, list of titles) in order defined by metadata
     """
     if metadata is None:
-        return [None] * len(videos)
+        return videos, [None] * len(videos)
 
-    titles = []
+    # Normalize Unicode strings to NFC for consistent comparison
+    # macOS uses NFD (decomposed) for filesystem, but JSON typically uses NFC (composed)
+    def normalize(s: str) -> str:
+        return unicodedata.normalize('NFC', s)
+
+    # Create a mapping of normalized filename -> (order, title, path)
+    video_map = {}
     for video_path in videos:
         filename = video_path.name
-        title = metadata.get_title_for_file(filename)
+        normalized_filename = normalize(filename)
+        video_map[normalized_filename] = video_path
 
-        if title is None:
-            logger.warning(f"No metadata found for video: {filename}")
+    # Match videos to metadata and collect with order
+    matched_videos = []
+    for meta in metadata.metadata:
+        normalized_meta_file = normalize(meta.file)
+        if normalized_meta_file in video_map:
+            matched_videos.append((meta.order, meta.title, video_map[normalized_meta_file]))
+        else:
+            logger.warning(f"Video file not found for metadata: {meta.file}")
 
-        titles.append(title)
+    # Warn about videos without metadata
+    for video_path in videos:
+        normalized_filename = normalize(video_path.name)
+        if not any(normalize(meta.file) == normalized_filename for meta in metadata.metadata):
+            logger.warning(f"No metadata found for video: {video_path.name}")
 
-    return titles
+    # Sort by order (descending: 5, 4, 3, 2, 1)
+    matched_videos.sort(key=lambda x: x[0], reverse=True)
+
+    # Extract sorted videos and titles
+    sorted_videos = [video for _, _, video in matched_videos]
+    titles = [title for _, title, _ in matched_videos]
+
+    return sorted_videos, titles
