@@ -12,7 +12,7 @@ class DualVideoConfig:
     foreground_left_margin: int = 50
     foreground_right_margin: int = 50
     min_foreground_height: int = 400
-    counter_font_size: int = 80
+    counter_font_size: int = 100
     counter_line_spacing: int = 7
 
 

@@ -203,7 +203,7 @@ def main() -> None:
 
                     # Calculate baseline alignment offset
                     # Smaller font needs to be shifted down to align baseline with larger number
-                    baseline_offset = number_font_size - adaptive_size
+                    baseline_offset = number_font_size - adaptive_size - 7.5 # align with counter
 
                     y_pos = counter_y_position + (idx * counter_line_height) + baseline_offset
 
