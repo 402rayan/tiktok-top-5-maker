@@ -150,7 +150,7 @@ def main() -> None:
 
         # Calculate title height to position counter below it
         title_font_size = 70
-        title_y_start = 140
+        title_y_start = video_config.title_y_position
         title_line_spacing = 10
         title_max_width = 1000
 

@@ -1,18 +1,18 @@
 from pathlib import Path
 
-from config import TextOverlayConfig
+from config import TextOverlayConfig, VideoConfig
 
 
 class TextStyles:
     @staticmethod
-    def get_top5_title(font_path: Path, title_text: str) -> TextOverlayConfig:
+    def get_top5_title(font_path: Path, title_text: str, y_position: int = VideoConfig.title_y_position) -> TextOverlayConfig:
         return TextOverlayConfig(
             text=title_text.upper(),
             font_path=font_path,
             font_size=70,
             font_color="black",
             x_position="(w-text_w)/2",
-            y_position="140",
+            y_position=str(y_position),
             box_enabled=True,
             box_color="white",
             box_border_width=25,

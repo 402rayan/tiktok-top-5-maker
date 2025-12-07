@@ -27,6 +27,7 @@ class VideoConfig:
     audio_bitrate: str = "192k"
     preset: str = "medium"
     crf: int = 23
+    title_y_position: int = 240
     dual_video: DualVideoConfig = field(default_factory=DualVideoConfig)
 
 
