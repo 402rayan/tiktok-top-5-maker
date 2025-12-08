@@ -9,8 +9,8 @@ class DualVideoConfig:
     blur_sigma: int = 30
     foreground_top_margin: int = 50
     foreground_bottom_margin: int = 100
-    foreground_left_margin: int = 50
-    foreground_right_margin: int = 50
+    foreground_left_margin: int = 63
+    foreground_right_margin: int = 63
     min_foreground_height: int = 400
     counter_font_size: int = 100
     counter_line_spacing: int = 7
